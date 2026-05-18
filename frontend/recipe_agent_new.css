@@ -1,0 +1,449 @@
+/* ============================================================
+   SAVEUR RECIPE AGENT — CSS
+   Aesthetic: warm editorial, terracotta + sage + cream
+   Fonts: Playfair Display (headings) + DM Sans (body)
+============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap');
+
+:root {
+    --cream:             #FAF7F2;
+    --cream2:            #F3EDE2;
+    --warm-white:        #FFFDF9;
+    --terracotta:        #C4673A;
+    --terracotta-deep:   #A04E27;
+    --terracotta-light:  #E8A07A;
+    --terracotta-pale:   #F5E3D8;
+    --sage:              #7A9E7E;
+    --sage-light:        #C8DFCA;
+    --sage-pale:         #EBF3EC;
+    --ink:               #1C1714;
+    --ink2:              #2E2521;
+    --text-main:         #3A2D25;
+    --text-muted:        #7A6A5E;
+    --text-dim:          #A89A8E;
+    --border:            #E2D8CE;
+    --border-warm:       #D4C4B4;
+}
+
+/* ─── RESET ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ─── GLOBAL ─── */
+body,
+.gradio-container {
+    background: var(--cream) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    color: var(--text-main) !important;
+}
+.gradio-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+}
+footer { display: none !important; }
+
+/* ─── LAYOUT ─── */
+.main-layout {
+    display: flex !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+    width: 260px !important;
+    min-width: 260px !important;
+    background: var(--ink) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+/* decorative orb */
+.sidebar::before {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -50px !important;
+    left: -40px !important;
+    width: 200px !important;
+    height: 200px !important;
+    border-radius: 50% !important;
+    background: var(--terracotta-deep) !important;
+    opacity: 0.14 !important;
+    pointer-events: none !important;
+}
+
+.sidebar-header {
+    padding: 24px 20px 16px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+}
+.sidebar-title {
+    font-family: 'DM Serif Display', serif !important;
+    font-size: 1.1rem !important;
+    font-weight: 400 !important;
+    color: var(--terracotta-light) !important;
+    letter-spacing: 0.3px !important;
+}
+.sidebar-subtitle {
+    font-size: 0.62rem !important;
+    color: rgba(255,255,255,0.28) !important;
+    letter-spacing: 1.4px !important;
+    text-transform: uppercase !important;
+    margin-top: 3px !important;
+}
+
+.new-chat-btn {
+    padding: 14px 16px 8px !important;
+}
+.new-chat-btn button {
+    width: 100% !important;
+    background: rgba(196,103,58,0.15) !important;
+    color: var(--terracotta-light) !important;
+    border: 1.5px solid rgba(196,103,58,0.45) !important;
+    border-radius: 10px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+    padding: 10px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    letter-spacing: 0.2px !important;
+}
+.new-chat-btn button:hover {
+    background: rgba(196,103,58,0.28) !important;
+    border-color: var(--terracotta-light) !important;
+}
+
+.chat-list {
+    overflow-y: auto !important;
+    flex: 1 !important;
+    padding: 6px 0 !important;
+}
+.no-chats {
+    color: rgba(255,255,255,0.25) !important;
+    font-size: 0.78rem !important;
+    text-align: center !important;
+    padding: 28px 20px !important;
+    line-height: 1.7 !important;
+}
+
+.chat-item {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 10px 16px !important;
+    cursor: pointer !important;
+    transition: background 0.15s !important;
+    border-left: 2px solid transparent !important;
+}
+.chat-item:hover { background: rgba(255,255,255,0.04) !important; }
+.chat-item.active {
+    background: rgba(196,103,58,0.1) !important;
+    border-left-color: var(--terracotta) !important;
+}
+.chat-dot {
+    width: 7px !important;
+    height: 7px !important;
+    border-radius: 50% !important;
+    background: var(--terracotta) !important;
+    margin-top: 5px !important;
+    flex-shrink: 0 !important;
+    opacity: 0.65 !important;
+}
+.chat-title {
+    font-size: 0.79rem !important;
+    color: rgba(255,255,255,0.68) !important;
+    line-height: 1.4 !important;
+    font-weight: 400 !important;
+}
+.chat-date {
+    font-size: 0.64rem !important;
+    color: rgba(255,255,255,0.26) !important;
+    margin-top: 2px !important;
+}
+
+.sidebar-stats {
+    margin-top: auto !important;
+    padding: 16px !important;
+    border-top: 1px solid rgba(255,255,255,0.07) !important;
+    display: flex !important;
+    gap: 12px !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+.stat { flex: 1 !important; text-align: center !important; }
+.stat-num {
+    display: block !important;
+    font-family: 'Playfair Display', serif !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    color: var(--terracotta-light) !important;
+}
+.stat-lbl {
+    display: block !important;
+    font-size: 0.6rem !important;
+    color: rgba(255,255,255,0.28) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    margin-top: 2px !important;
+}
+
+/* ─── MAIN CONTENT ─── */
+.main-content {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    background: var(--warm-white) !important;
+}
+
+/* ─── TOP HEADER ─── */
+.top-header {
+    padding: 0 28px !important;
+    height: 60px !important;
+    border-bottom: 1px solid var(--border) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+    background: var(--warm-white) !important;
+    flex-shrink: 0 !important;
+}
+.main-title {
+    font-family: 'Playfair Display', serif !important;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    color: var(--ink) !important;
+    font-style: italic !important;
+    margin: 0 !important;
+}
+.main-title span {
+    color: var(--terracotta) !important;
+    font-style: normal !important;
+}
+.header-badges {
+    margin-left: auto !important;
+    display: flex !important;
+    gap: 8px !important;
+    align-items: center !important;
+}
+.badge {
+    padding: 4px 12px !important;
+    border-radius: 20px !important;
+    font-size: 0.7rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.2px !important;
+}
+.badge-tools {
+    background: var(--terracotta-pale) !important;
+    color: var(--terracotta-deep) !important;
+    border: 1px solid rgba(196,103,58,0.25) !important;
+}
+.badge-recipes {
+    background: var(--sage-pale) !important;
+    color: #4A7450 !important;
+    border: 1px solid rgba(122,158,126,0.3) !important;
+}
+
+/* ─── CHAT ─── */
+.chat-area {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    background: var(--cream) !important;
+}
+.chat-area .chatbot {
+    background: transparent !important;
+    border: none !important;
+    height: 100% !important;
+}
+
+/* Chatbot message bubbles via Gradio internals */
+.chat-area .message.user .bubble-wrap .md {
+    background: var(--terracotta) !important;
+    color: white !important;
+    border-radius: 16px 16px 4px 16px !important;
+    border: none !important;
+    font-size: 0.9rem !important;
+    line-height: 1.6 !important;
+}
+.chat-area .message.bot .bubble-wrap .md {
+    background: var(--warm-white) !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 4px 16px 16px 16px !important;
+    font-size: 0.9rem !important;
+    line-height: 1.65 !important;
+}
+
+/* ─── EXAMPLES / QUICK PILLS ─── */
+.examples-wrap {
+    padding: 10px 24px 6px !important;
+    background: var(--warm-white) !important;
+}
+.examples-wrap .examples button {
+    background: white !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border-warm) !important;
+    border-radius: 20px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.73rem !important;
+    padding: 5px 13px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    margin: 3px !important;
+}
+.examples-wrap .examples button:hover {
+    border-color: var(--terracotta) !important;
+    color: var(--terracotta) !important;
+    background: var(--terracotta-pale) !important;
+}
+
+/* ─── INPUT SECTION ─── */
+.input-section {
+    padding: 14px 24px 20px !important;
+    border-top: 1px solid var(--border) !important;
+    background: var(--warm-white) !important;
+    flex-shrink: 0 !important;
+}
+.input-section textarea {
+    background: var(--cream) !important;
+    border: 1.5px solid var(--border-warm) !important;
+    border-radius: 14px !important;
+    color: var(--text-main) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.9rem !important;
+    padding: 13px 18px !important;
+    resize: none !important;
+    transition: border-color 0.2s, background 0.2s !important;
+    line-height: 1.5 !important;
+}
+.input-section textarea:focus {
+    border-color: var(--terracotta) !important;
+    background: white !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(196,103,58,0.1) !important;
+}
+.input-section textarea::placeholder {
+    color: var(--text-dim) !important;
+}
+
+/* Image upload button */
+.photo-btn {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 12px !important;
+    border: 1.5px dashed var(--border-warm) !important;
+    background: var(--cream) !important;
+    cursor: pointer !important;
+    overflow: hidden !important;
+    transition: border-color 0.2s, background 0.2s !important;
+}
+.photo-btn:hover {
+    border-color: var(--terracotta) !important;
+    background: var(--terracotta-pale) !important;
+}
+
+/* Send button */
+.send-btn button {
+    background: var(--terracotta) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 0.9rem !important;
+    padding: 13px 26px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    letter-spacing: 0.2px !important;
+}
+.send-btn button:hover {
+    background: var(--terracotta-deep) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 16px rgba(196,103,58,0.3) !important;
+}
+
+/* Identify button (secondary) */
+.identify-btn button {
+    background: var(--sage-pale) !important;
+    color: #4A7450 !important;
+    border: 1.5px solid var(--sage) !important;
+    border-radius: 12px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.84rem !important;
+    font-weight: 500 !important;
+    padding: 13px 18px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+.identify-btn button:hover {
+    background: var(--sage-light) !important;
+    border-color: #4A7450 !important;
+}
+
+/* ─── SCROLLBAR POLISH ─── */
+.chat-list::-webkit-scrollbar,
+.chat-area::-webkit-scrollbar { width: 4px; }
+.chat-list::-webkit-scrollbar-track,
+.chat-area::-webkit-scrollbar-track { background: transparent; }
+.chat-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+.chat-area::-webkit-scrollbar-thumb { background: var(--border-warm); border-radius: 4px; }
+
+/* ─── RESPONSIVE — TABLET ─── */
+@media screen and (max-width: 1024px) {
+    .sidebar { width: 220px !important; min-width: 220px !important; }
+    .top-header { padding: 0 18px !important; }
+    .main-title { font-size: 1.1rem !important; }
+    .input-section { padding: 12px 16px 16px !important; }
+    .examples-wrap { padding: 8px 16px !important; }
+    .send-btn button { width: 100% !important; }
+}
+
+/* ─── RESPONSIVE — MOBILE ─── */
+@media screen and (max-width: 768px) {
+    .main-layout { flex-direction: column !important; height: auto !important; }
+
+    .sidebar {
+        width: 100% !important;
+        min-width: 100% !important;
+        height: auto !important;
+        border-right: none !important;
+        border-bottom: 2px solid var(--terracotta) !important;
+    }
+    .sidebar::before { display: none !important; }
+    .chat-list { max-height: 160px !important; }
+    .sidebar-stats { padding: 12px !important; }
+
+    .main-content { width: 100% !important; height: auto !important; }
+
+    .top-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        height: auto !important;
+        padding: 14px 16px !important;
+        gap: 10px !important;
+    }
+    .header-badges { margin-left: 0 !important; flex-wrap: wrap !important; }
+    .main-title { font-size: 1.1rem !important; }
+
+    .chat-area { height: calc(100vh - 300px) !important; }
+
+    .input-section { padding: 12px !important; }
+    .input-section textarea { font-size: 0.88rem !important; padding: 12px 14px !important; }
+    .send-btn button { width: 100% !important; padding: 12px !important; margin-top: 8px !important; }
+
+    .examples-wrap { padding: 8px 12px !important; }
+    .examples-wrap .examples { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; }
+    .examples-wrap .examples button { font-size: 0.7rem !important; }
+}
+
+/* ─── RESPONSIVE — SMALL MOBILE ─── */
+@media screen and (max-width: 480px) {
+    .top-header { padding: 12px !important; }
+    .main-title { font-size: 1rem !important; }
+    .badge { font-size: 0.65rem !important; padding: 4px 8px !important; }
+    .input-section textarea { font-size: 0.85rem !important; }
+    .send-btn button { font-size: 0.85rem !important; }
+    .chat-area { height: calc(100vh - 340px) !important; }
+}
