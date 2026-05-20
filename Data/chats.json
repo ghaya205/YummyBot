@@ -1,0 +1,94 @@
+{
+  "20260518_225902": {
+    "title": "Image Chat",
+    "date": "2026-05-18",
+    "messages": [
+      {
+        "role": "user",
+        "metadata": null,
+        "content": [
+          {
+            "text": "hi",
+            "type": "text"
+          }
+        ],
+        "options": null
+      },
+      {
+        "role": "assistant",
+        "metadata": null,
+        "content": [
+          {
+            "text": "Hi! Welcome to RecipePal. I'm here to help you with delicious Tunisian and international recipes. What can I help you with today? Would you like to search for a specific recipe or get suggestions?",
+            "type": "text"
+          }
+        ],
+        "options": null
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Image uploaded"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "## 🔍 Image Analysis\nDish: Meatball Stew\nIngredients: meatballs, greens (likely spinach or kale), beans\nCuisine: Mediterranean or Italian-inspired\n\n---\n\n## 📖 Recipe for Meatball Stew\nI apologize for the confusion. I can still provide you with a general recipe for Meatball Stew. However, please note that it's not from my local database or web search results.\n\nHere's a basic recipe for Meatball Stew:\n\nIngredients:\n\n* 1 pound ground beef\n* 1/2 cup breadcrumbs\n* 1 egg\n* 1/4 cup milk\n* 1/4 cup grated Parmesan cheese\n* 1/4 cup chopped onion\n* 2 cloves garlic, minced\n* 1/2 teaspoon salt\n* 1/4 teaspoon black pepper\n* 1/4 teaspoon Italian seasoning\n* 2 tablespoons olive oil\n* 1 large onion, chopped\n* 3 cloves garlic, minced\n* 2 carrots, peeled and chopped\n* 2 potatoes, peeled and chopped\n* 1 large can (28 oz) crushed tomatoes\n* 2 cups beef broth\n* Fresh parsley, chopped (optional)\n\nSteps:\n\n1. Preheat oven to 400°F (200°C).\n2. In a large bowl, combine ground beef, breadcrumbs, egg, milk, Parmesan cheese, onion, garlic, salt, pepper, and Italian seasoning. Mix well with your hands or a wooden spoon until just combined.\n3. Use your hands to shape the mixture into meatballs, about 1 1/2 inches (3.8 cm) in diameter. You should end up with around 20-25 meatballs.\n4. Place the meatballs on a baking sheet lined with parchment paper. Drizzle with olive oil and gently roll them around to coat evenly.\n5. Bake the meatballs in the preheated oven for 18-20 minutes, or until cooked through and lightly browned on the outside.\n6. While the meatballs are baking, heat a large Dutch oven or pot over medium heat. Add the chopped onion and cook until softened, about 5 minutes. Add the garlic and cook for another minute.\n7. Add the chopped carrots and potatoes to the pot. Cook for 5 minutes, stirring occasionally.\n8. Add the crushed tomatoes, beef broth, and baked meatballs to the pot. Stir gently to combine.\n9. Bring the stew to a simmer, then reduce the heat to low and let cook for 20-25 minutes, or until the vegetables are tender and the meatballs are heated through.\n10. Season the stew with salt and pepper to taste. Garnish with chopped parsley, if desired.\n11. Serve hot and enjoy!\n\nPlease note that this recipe is not from my local database or web search results, but it's a classic recipe that should give you a delicious Meatball Stew."
+          }
+        ]
+      }
+    ]
+  },
+  "20260518_230156": {
+    "title": "Image Chat",
+    "date": "2026-05-18",
+    "messages": [
+      {
+        "role": "user",
+        "metadata": null,
+        "content": [
+          {
+            "text": "hello",
+            "type": "text"
+          }
+        ],
+        "options": null
+      },
+      {
+        "role": "assistant",
+        "metadata": null,
+        "content": [
+          {
+            "text": "Hello! I'm happy to help you with any food-related questions or recipe requests. How can I assist you today? Do you have a specific dish in mind or perhaps a missing ingredient you'd like to substitute?",
+            "type": "text"
+          }
+        ],
+        "options": null
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Image uploaded"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "## 🔍 Image Analysis\nDish: Roast Chicken with Vegetables\nIngredients: \n- Roast chicken\n- Sweet potatoes\n- Broccoli\n- Potatoes\n- Peas\n- Mushrooms\nCuisine: British\n\n---\n\n## 📖 Recipe for Roast Chicken with Vegetables\nHere's a classic recipe for Roast Chicken with Vegetables:\n\n**Servings:** 4-6 people\n\n**Ingredients:**\n\n* 1 whole chicken (3-4 lbs)\n* 2 tbsp olive oil\n* 1 tsp dried thyme\n* 1 tsp dried rosemary\n* 1 tsp salt\n* 1 tsp black pepper\n* 1 large onion, peeled and chopped\n* 3 cloves garlic, minced\n* 2 large carrots, peeled and chopped\n* 2 large potatoes, peeled and chopped\n* 1 large zucchini, sliced\n* 1 large red bell pepper, sliced\n\n**Steps:**\n\n1. **Preheat oven:** Preheat the oven to 425°F (220°C).\n2. **Prep chicken:** Rinse the chicken and pat it dry with paper towels. Season the chicken with thyme, rosemary, salt, and pepper.\n3. **Prep vegetables:** In a large bowl, toss the chopped onion, garlic, carrots, potatoes, zucchini, and red bell pepper with olive oil, salt, and pepper until they're evenly coated.\n4. **Assemble:** Place the chicken in a large roasting pan and arrange the vegetables around it.\n5. **Roast:** Roast the chicken and vegetables in the preheated oven for about 45-50 minutes, or until the chicken is cooked through and the vegetables are tender.\n6. **Check:** Check the chicken's internal temperature; it should reach 165°F (74°C). If not, continue roasting in 10-minute increments until done.\n7. **Rest:** Once the chicken is cooked, remove it from the oven and let it rest for 10-15 minutes before carving.\n8. **Serve:** Serve the roasted chicken with the vegetables and enjoy!\n\n**Tips:**\n\n* Use your favorite herbs and spices to customize the recipe.\n* Adjust the cooking time based on the size of your chicken and vegetables.\n\nI hope you enjoy this recipe! Let me know if you have any questions or need further assistance."
+          }
+        ]
+      }
+    ]
+  }
+}

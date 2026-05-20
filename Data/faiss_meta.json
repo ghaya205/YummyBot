@@ -1,0 +1,26 @@
+[
+  {
+    "text": "hi",
+    "chat_id": "20260518_225902",
+    "role": "user",
+    "time": "2026-05-18T22:59:02.484076"
+  },
+  {
+    "text": "Hi! Welcome to RecipePal. I'm here to help you with delicious Tunisian and international recipes. What can I help you wi",
+    "chat_id": "20260518_225902",
+    "role": "assistant",
+    "time": "2026-05-18T22:59:02.504333"
+  },
+  {
+    "text": "hello",
+    "chat_id": "20260518_230156",
+    "role": "user",
+    "time": "2026-05-18T23:01:56.946784"
+  },
+  {
+    "text": "Hello! I'm happy to help you with any food-related questions or recipe requests. How can I assist you today? Do you have",
+    "chat_id": "20260518_230156",
+    "role": "assistant",
+    "time": "2026-05-18T23:01:56.974744"
+  }
+]

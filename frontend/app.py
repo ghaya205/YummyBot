@@ -1,723 +1,551 @@
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import sys
+import os
+import json
+from datetime import datetime
 
 import gradio as gr
-import json
-import os
-from datetime import datetime
-from agent import chat as agent_chat, chat_with_image, chat_history
 
-# ─────────────────────────────────────────
-# SAVED CHATS
-# ─────────────────────────────────────────
-CHATS_FILE = os.path.join(os.path.dirname(__file__), '..', 'Data', 'saved_chats.json')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+try:
+    from agent import chat as agent_chat, chat_with_image, chat_history
+except ImportError:
+    def agent_chat(msg, temperature=0.7): return f"Delicious response to: {msg}"
+    def chat_with_image(img, temperature=0.7): return "That looks like an incredible Tunisian dish!"
+    chat_history = []
+
+BASE_DIR = os.path.dirname(__file__)
+DATA_DIR = os.path.join(BASE_DIR, '..', 'Data')
+os.makedirs(DATA_DIR, exist_ok=True)
+CHATS_FILE = os.path.join(DATA_DIR, 'saved_chats.json')
+
+SYSTEM_PROMPT = (
+    "You are a helpful food recipe assistant specializing in Tunisian and international cuisine.\n"
+    "- Always call RecipeSearch first when the user asks about recipes to query the FAISS vector space.\n"
+    "- Call IngredientSubstitute when looking for cooking alternatives.\n"
+    "- Call WebSearch only if the local vector lookup yields irrelevant contexts.\n"
+    "- Be friendly, detailed, and format your markdown lists clearly."
+)
+
 
 def load_saved_chats():
     if os.path.exists(CHATS_FILE):
-        with open(CHATS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(CHATS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
     return {}
+
 
 def save_chats(chats):
     with open(CHATS_FILE, "w", encoding="utf-8") as f:
         json.dump(chats, f, ensure_ascii=False, indent=2)
 
-def render_sidebar():
-    chats = load_saved_chats()
-    html = """
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <div class="sidebar-brand">
-        <i class="bi bi-fire brand-icon"></i>
-        <div class="brand-text">
-            <span class="brand-name">Saffron</span>
-            <span class="brand-sub">Recipe Agent</span>
-        </div>
-    </div>
-    <div class="section-label">Recent Chats</div>
-    <div class="chat-list">
-    """
-    if not chats:
-        html += """
-        <div class='empty-chats'>
-            <i class='bi bi-chat-dots' style='font-size:2rem;color:#c9956a;display:block;margin-bottom:8px;'></i>
-            <span>No chats yet.<br>Ask me a recipe!</span>
-        </div>"""
-    else:
-        for chat_id, chat_data in sorted(chats.items(), reverse=True):
-            title = chat_data.get("title", "New Chat")[:30]
-            date = chat_data.get("date", "")
-            html += f"""
-            <div class="chat-item">
-                <i class="bi bi-clock-history chat-icon"></i>
-                <div class="chat-info">
-                    <span class="chat-title">{title}</span>
-                    <span class="chat-date">{date}</span>
-                </div>
-            </div>
-            """
-    html += "</div>"
-    html += """
-    <div class="sidebar-footer">
-        <div class="stat-pill"><i class="bi bi-journal-bookmark"></i> 522K Recipes</div>
-        <div class="stat-pill"><i class="bi bi-stars"></i> 3 AI Tools</div>
-        <div class="stat-pill"><i class="bi bi-geo-alt"></i> 15 Tunisian</div>
-    </div>
-    """
-    return html
 
-# ─────────────────────────────────────────
-# STATE
-# ─────────────────────────────────────────
-current_chat_id = None
+def get_chat_choices():
+    chats = load_saved_chats()
+    if not chats:
+        return []
+    sorted_chats = sorted(chats.items(), key=lambda x: x[0], reverse=True)
+    return [(f"🍽️ {data.get('title', 'New Chat')[:24]} ({data.get('date', '')})", id_) for id_, data in sorted_chats]
+
 
 def new_chat():
-    global current_chat_id
-    chat_history.clear()
-    chat_history.append({
-        "role": "system",
-        "content": (
-            "You are a helpful food recipe assistant specializing in Tunisian and international cuisine.\n"
-            "- Always call RecipeSearch first when the user asks about a recipe.\n"
-            "- Call IngredientSubstitute when the user asks for a substitute.\n"
-            "- Call WebSearch only if RecipeSearch returns no results.\n"
-            "- Be friendly, detailed, and format recipes clearly with ingredients and steps."
-        )
-    })
-    current_chat_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return [], gr.update(value=render_sidebar())
+    new_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if isinstance(chat_history, list):
+        chat_history.clear()
+        chat_history.append({"role": "system", "content": SYSTEM_PROMPT})
+    return [], gr.update(choices=get_chat_choices(), value=None), new_id
 
-def respond(message, history):
-    global current_chat_id
+
+def load_selected_chat(chat_id):
+    if not chat_id:
+        return [], gr.skip()
+    chats = load_saved_chats()
+    chat_data = chats.get(chat_id, {})
+    messages = chat_data.get("messages", [])
+    formatted = [
+        {"role": m["role"], "content": m["content"]}
+        for m in messages
+        if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str)
+    ]
+    return formatted, chat_id
+
+
+def respond(message, history, chat_id, temperature):
     if not message.strip():
-        return "", history, gr.update()
-    response = agent_chat(message)
-    history.append({"role": "user", "content": message})
+        return "", history, gr.update(), chat_id
+
+    response = agent_chat(message, temperature=temperature)
+
+    history.append({"role": "user",      "content": message})
     history.append({"role": "assistant", "content": response})
-    if current_chat_id is None:
-        current_chat_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    active_id = chat_id if chat_id else datetime.now().strftime("%Y%m%d_%H%M%S")
+
     chats = load_saved_chats()
-    chats[current_chat_id] = {
-        "title": message[:40],
-        "date": datetime.now().strftime("%b %d, %Y"),
-        "messages": history
+    chats[active_id] = {
+        "title": message[:30] + "..." if len(message) > 30 else message,
+        "date": datetime.now().strftime("%b %d"),
+        "messages": history,
     }
     save_chats(chats)
-    return "", history, gr.update(value=render_sidebar())
 
-def handle_image(image_path, history):
-    global current_chat_id
+    return "", history, gr.update(choices=get_chat_choices(), value=active_id), active_id
+
+
+def handle_image(image_path, history, chat_id, temperature):
     if image_path is None:
-        return history, gr.update()
-    response = chat_with_image(image_path)
-    history.append({"role": "user", "content": "📸 I uploaded a food photo — what dish is this?"})
+        return history, gr.update(), chat_id
+
+    response = chat_with_image(image_path, temperature=temperature)
+
+    history.append({"role": "user",      "content": "📸 Analysing custom dish photo..."})
     history.append({"role": "assistant", "content": response})
-    if current_chat_id is None:
-        current_chat_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    active_id = chat_id if chat_id else datetime.now().strftime("%Y%m%d_%H%M%S")
+
     chats = load_saved_chats()
-    chats[current_chat_id] = {
-        "title": "📸 Photo identification",
-        "date": datetime.now().strftime("%b %d, %Y"),
-        "messages": history
+    chats[active_id] = {
+        "title": "Image Recipe Analysis 📸",
+        "date": datetime.now().strftime("%b %d"),
+        "messages": history,
     }
     save_chats(chats)
-    return history, gr.update(value=render_sidebar())
 
-# ─────────────────────────────────────────
-# CSS — Warm & Earthy Food Theme
-# ─────────────────────────────────────────
+    return history, gr.update(choices=get_chat_choices(), value=active_id), active_id
+
+
 css = """
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500;600&display=swap');
-@import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-:root {
-    --cream:       #fdf6ee;
-    --cream2:      #f5ebe0;
-    --cream3:      #ede0d4;
-    --terracotta:  #c9704a;
-    --terra-dark:  #a85535;
-    --terra-light: #e8956d;
-    --saffron:     #e8a838;
-    --sage:        #7a8c6e;
-    --bark:        #3b2a1a;
-    --bark2:       #4e3824;
-    --bark3:       #6b4f34;
-    --text:        #2e1f10;
-    --text-muted:  #6b4f34;
-    --text-dim:    #9c7a5a;
-    --border:      #dcc9b6;
-    --shadow:      rgba(58, 32, 10, 0.08);
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body, .gradio-container {
-    background: var(--cream) !important;
-    font-family: 'DM Sans', sans-serif !important;
-    color: var(--text) !important;
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
-.gradio-container { max-width: 100% !important; padding: 0 !important; }
-footer { display: none !important; }
-
-/* ── LAYOUT ── */
-.main-layout {
-    display: flex !important;
-    height: 100vh !important;
-    overflow: hidden !important;
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    background: linear-gradient(135deg, #C41E3A 0%, #DC143C 25%, #FF1744 50%, #E53935 75%, #B71C1C 100%) !important;
+    overflow: hidden;
 }
 
-/* ── SIDEBAR ── */
-.sidebar {
-    width: 280px !important;
-    min-width: 280px !important;
-    background: var(--bark) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100vh !important;
-    overflow: hidden !important;
-    border-right: 3px solid var(--terracotta) !important;
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 20% 50%, rgba(196, 30, 58, 0.2), transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(229, 57, 53, 0.15), transparent 50%),
+                linear-gradient(180deg, rgba(196, 30, 58, 0.7) 0%, rgba(220, 20, 60, 0.75) 50%, rgba(229, 57, 53, 0.8) 100%) !important;
+    z-index: -1;
+    pointer-events: none;
 }
 
-.sidebar-brand {
-    padding: 22px 20px 18px !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 14px !important;
-    border-bottom: 1px solid var(--bark2) !important;
-}
-
-.brand-icon {
-    font-size: 2rem !important;
-    color: var(--saffron) !important;
-    line-height: 1 !important;
-}
-
-.brand-name {
-    display: block !important;
-    font-family: 'Playfair Display', serif !important;
-    font-size: 1.25rem !important;
-    font-weight: 700 !important;
-    color: var(--cream) !important;
-    line-height: 1.1 !important;
-}
-
-.brand-sub {
-    display: block !important;
-    font-size: 0.7rem !important;
-    color: var(--terra-light) !important;
-    letter-spacing: 1.5px !important;
-    text-transform: uppercase !important;
-    font-weight: 500 !important;
-}
-
-.section-label {
-    font-size: 0.65rem !important;
-    color: var(--text-dim) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 1.5px !important;
-    font-weight: 600 !important;
-    padding: 16px 20px 8px !important;
-    color: #9c7a5a !important;
-}
-
-.chat-list {
-    flex: 1 !important;
-    overflow-y: auto !important;
-    padding: 6px 10px !important;
-    scrollbar-width: thin !important;
-    scrollbar-color: var(--bark3) transparent !important;
-}
-
-.empty-chats {
-    text-align: center !important;
-    padding: 30px 16px !important;
-    color: #9c7a5a !important;
-    font-size: 0.82rem !important;
-    line-height: 1.7 !important;
-}
-
-.chat-item {
-    display: flex !important;
-    align-items: flex-start !important;
-    gap: 10px !important;
-    padding: 10px 12px !important;
-    border-radius: 12px !important;
-    cursor: pointer !important;
-    transition: background 0.18s !important;
-    margin-bottom: 3px !important;
-}
-
-.chat-item:hover { background: var(--bark2) !important; }
-
-.chat-icon {
-    font-size: 0.9rem !important;
-    color: var(--terracotta) !important;
-    margin-top: 2px !important;
-    flex-shrink: 0 !important;
-}
-
-.chat-title {
-    display: block !important;
-    font-size: 0.82rem !important;
-    color: var(--cream2) !important;
-    font-weight: 500 !important;
-    line-height: 1.4 !important;
-}
-
-.chat-date {
-    display: block !important;
-    font-size: 0.68rem !important;
-    color: #7a6050 !important;
-    margin-top: 2px !important;
-}
-
-.sidebar-footer {
-    padding: 14px 14px 20px !important;
-    border-top: 1px solid var(--bark2) !important;
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 7px !important;
-}
-
-.stat-pill {
-    background: var(--bark2) !important;
-    color: var(--cream3) !important;
-    font-size: 0.68rem !important;
-    padding: 5px 10px !important;
-    border-radius: 20px !important;
-    font-weight: 500 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 5px !important;
-}
-
-.stat-pill i { color: var(--saffron) !important; font-size: 0.8rem !important; }
-
-/* ── NEW CHAT BUTTON ── */
-.new-chat-btn {
-    padding: 14px 14px 10px !important;
-    border-bottom: 1px solid var(--bark2) !important;
-}
-
-.new-chat-btn button {
+.gradio-container {
+    max-width: 100% !important;
     width: 100% !important;
-    background: linear-gradient(135deg, var(--terracotta), var(--terra-dark)) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    font-family: 'DM Sans', sans-serif !important;
-    font-weight: 600 !important;
-    font-size: 0.88rem !important;
-    padding: 11px 16px !important;
-    cursor: pointer !important;
-    transition: all 0.2s !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 7px !important;
-    letter-spacing: 0.3px !important;
-}
-
-.new-chat-btn button:hover {
-    background: var(--terra-dark) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 14px rgba(168,85,53,0.4) !important;
-}
-
-/* ── MAIN AREA ── */
-.main-content {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
     height: 100vh !important;
-    overflow: hidden !important;
-    background: var(--cream) !important;
-}
-
-/* ── TOP HEADER ── */
-.top-header {
-    padding: 18px 30px !important;
-    background: var(--cream) !important;
-    border-bottom: 2px solid var(--cream3) !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 16px !important;
-}
-
-.header-icon {
-    width: 46px !important;
-    height: 46px !important;
-    background: linear-gradient(135deg, var(--terracotta), var(--saffron)) !important;
-    border-radius: 14px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 1.35rem !important;
-    color: white !important;
-    flex-shrink: 0 !important;
-    box-shadow: 0 4px 12px rgba(200,112,74,0.35) !important;
-}
-
-.header-titles { flex: 1 !important; }
-
-.main-title {
-    font-family: 'Playfair Display', serif !important;
-    font-size: 1.45rem !important;
-    font-weight: 700 !important;
-    color: var(--bark) !important;
-    line-height: 1.1 !important;
     margin: 0 !important;
-}
-
-.main-title span { color: var(--terracotta) !important; }
-
-.main-subtitle {
-    font-size: 0.78rem !important;
-    color: var(--text-dim) !important;
-    margin-top: 2px !important;
-    font-weight: 400 !important;
-}
-
-.header-badges {
-    display: flex !important;
-    gap: 8px !important;
-    flex-wrap: wrap !important;
-}
-
-.badge {
-    font-size: 0.72rem !important;
-    padding: 5px 12px !important;
-    border-radius: 20px !important;
-    font-weight: 600 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 5px !important;
-}
-
-.badge i { font-size: 0.8rem !important; }
-
-.badge-warm {
-    background: rgba(232, 168, 56, 0.15) !important;
-    color: #8a5a00 !important;
-    border: 1px solid rgba(232, 168, 56, 0.5) !important;
-}
-
-.badge-sage {
-    background: rgba(122, 140, 110, 0.15) !important;
-    color: var(--sage) !important;
-    border: 1px solid rgba(122, 140, 110, 0.4) !important;
-}
-
-.badge-terra {
-    background: rgba(201, 112, 74, 0.12) !important;
-    color: var(--terra-dark) !important;
-    border: 1px solid rgba(201, 112, 74, 0.35) !important;
-}
-
-/* ── CHAT AREA ── */
-.chat-area {
-    flex: 1 !important;
-    overflow: hidden !important;
-    background: var(--cream) !important;
     padding: 0 !important;
 }
 
-.chat-area .chatbot {
+.gradio-block {
     background: transparent !important;
     border: none !important;
-    height: 100% !important;
 }
 
-/* Style chatbot messages */
-.chat-area .message.user {
-    background: linear-gradient(135deg, var(--terracotta), var(--terra-dark)) !important;
-    color: white !important;
-    border-radius: 18px 18px 4px 18px !important;
+.main-layout {
+    display: flex !important;
+    gap: 16px !important;
+    height: 100vh !important;
+    padding: 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
-.chat-area .message.bot {
-    background: white !important;
-    border: 1px solid var(--cream3) !important;
-    border-radius: 18px 18px 18px 4px !important;
-    box-shadow: 0 2px 8px var(--shadow) !important;
-}
-
-/* ── EXAMPLES BAR ── */
-.examples-wrap {
-    padding: 10px 24px 8px !important;
-    background: var(--cream) !important;
-    border-top: 1px solid var(--cream3) !important;
-}
-
-.examples-wrap label { display: none !important; }
-
-.examples-wrap .examples { display: flex !important; flex-wrap: wrap !important; gap: 7px !important; }
-
-.examples-wrap .examples button {
-    background: white !important;
-    color: var(--text-muted) !important;
-    border: 1.5px solid var(--cream3) !important;
+.sidebar-panel {
+    flex: 0 0 280px !important;
+    background: linear-gradient(135deg, rgba(139, 0, 0, 0.85), rgba(178, 34, 52, 0.85)) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 2px solid rgba(220, 20, 60, 0.3) !important;
     border-radius: 20px !important;
-    font-size: 0.78rem !important;
-    padding: 5px 14px !important;
-    cursor: pointer !important;
-    transition: all 0.18s !important;
-    font-family: 'DM Sans', sans-serif !important;
-    font-weight: 500 !important;
+    padding: 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6), 
+                0 0 40px rgba(220, 20, 60, 0.2),
+                inset 0 1px 0 rgba(255, 200, 200, 0.15) !important;
+    overflow-y: auto !important;
 }
 
-.examples-wrap .examples button:hover {
-    border-color: var(--terracotta) !important;
-    color: var(--terracotta) !important;
-    background: rgba(201,112,74,0.06) !important;
-    transform: translateY(-1px) !important;
+.sidebar-panel::-webkit-scrollbar {
+    width: 6px !important;
 }
 
-.ex-pill {
-    background: white !important;
-    color: var(--text-muted) !important;
-    border: 1.5px solid var(--cream3) !important;
+.sidebar-panel::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.sidebar-panel::-webkit-scrollbar-thumb {
+    background: rgba(220, 20, 60, 0.4) !important;
+    border-radius: 3px !important;
+}
+
+.sidebar-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(220, 20, 60, 0.6) !important;
+}
+
+.content-panel {
+    flex: 1 !important;
+    background: linear-gradient(135deg, rgba(178, 34, 52, 0.85), rgba(139, 0, 0, 0.85)) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 2px solid rgba(220, 20, 60, 0.35) !important;
     border-radius: 20px !important;
-    font-size: 0.78rem !important;
-    padding: 5px 14px !important;
-    cursor: pointer !important;
-    transition: all 0.18s !important;
-    font-family: 'DM Sans', sans-serif !important;
-    font-weight: 500 !important;
+    padding: 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6), 
+                0 0 50px rgba(220, 20, 60, 0.2),
+                inset 0 1px 0 rgba(255, 200, 200, 0.1) !important;
 }
 
-.ex-pill:hover {
-    border-color: var(--terracotta) !important;
-    color: var(--terracotta) !important;
-    background: rgba(201,112,74,0.06) !important;
-    transform: translateY(-1px) !important;
+.brand-container {
+    text-align: center !important;
+    padding-bottom: 16px !important;
+    border-bottom: 2px solid rgba(220, 20, 60, 0.4) !important;
+    margin-bottom: 8px !important;
 }
 
-/* ── INPUT SECTION ── */
-.input-section {
-    padding: 14px 24px 20px !important;
-    background: var(--cream) !important;
-    border-top: 1px solid var(--border) !important;
+.brand-title {
+    color: #FFE0E6 !important;
+    font-weight: 800 !important;
+    font-size: 1.8rem !important;
+    letter-spacing: -0.5px !important;
+    margin: 0 !important;
+    display: block !important;
+    line-height: 1 !important;
+    text-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
 }
 
-.input-row { display: flex !important; align-items: flex-end !important; gap: 10px !important; }
-
-.input-section textarea {
-    background: white !important;
-    border: 2px solid var(--cream3) !important;
-    border-radius: 16px !important;
-    color: var(--text) !important;
-    font-family: 'DM Sans', sans-serif !important;
-    font-size: 0.95rem !important;
-    padding: 13px 18px !important;
-    resize: none !important;
-    transition: border-color 0.2s, box-shadow 0.2s !important;
-    box-shadow: 0 2px 8px var(--shadow) !important;
-}
-
-.input-section textarea:focus {
-    border-color: var(--terracotta) !important;
-    outline: none !important;
-    box-shadow: 0 0 0 4px rgba(201,112,74,0.12) !important;
-}
-
-.input-section textarea::placeholder { color: var(--text-dim) !important; }
-
-/* Send button */
-.send-btn button {
-    background: linear-gradient(135deg, var(--terracotta), var(--terra-dark)) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 14px !important;
-    font-family: 'DM Sans', sans-serif !important;
+.brand-subtitle {
+    color: #FFCCCC !important;
+    font-size: 0.8rem !important;
     font-weight: 600 !important;
+    margin-top: 4px !important;
+    letter-spacing: 0.3px !important;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+}
+
+.history-radio-list {
+    flex: 1 !important;
+}
+
+.history-radio-list span.wrap {
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.history-radio-list label {
+    background: rgba(220, 20, 60, 0.12) !important;
+    border: 1.5px solid rgba(220, 20, 60, 0.3) !important;
+    color: #FFCCCC !important;
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    cursor: pointer !important;
+    font-weight: 500 !important;
     font-size: 0.9rem !important;
-    padding: 13px 24px !important;
-    cursor: pointer !important;
-    transition: all 0.2s !important;
-    white-space: nowrap !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 7px !important;
-    box-shadow: 0 3px 12px rgba(168,85,53,0.3) !important;
 }
 
-.send-btn button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(168,85,53,0.4) !important;
+.history-radio-list label:hover {
+    background: rgba(220, 20, 60, 0.2) !important;
+    border-color: #FFE0E6 !important;
+    transform: translateX(4px) !important;
+    box-shadow: 0 5px 15px rgba(220, 20, 60, 0.25) !important;
 }
 
-/* Identify button */
-.identify-btn button {
-    background: white !important;
-    color: var(--bark3) !important;
-    border: 2px solid var(--cream3) !important;
-    border-radius: 14px !important;
-    font-family: 'DM Sans', sans-serif !important;
+.history-radio-list label.selected {
+    background: rgba(220, 20, 60, 0.3) !important;
+    border-color: #FFE0E6 !important;
+    color: #FFE0E6 !important;
+    box-shadow: 0 0 25px rgba(220, 20, 60, 0.4), inset 0 0 10px rgba(255, 200, 200, 0.15) !important;
+}
+
+button {
+    font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important;
-    font-size: 0.88rem !important;
-    padding: 11px 18px !important;
+    border: none !important;
+    border-radius: 12px !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
     cursor: pointer !important;
-    transition: all 0.2s !important;
-    white-space: nowrap !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
+    font-size: 0.95rem !important;
+    padding: 11px 20px !important;
 }
 
-.identify-btn button:hover {
-    border-color: var(--saffron) !important;
-    color: #7a4d00 !important;
-    background: rgba(232,168,56,0.08) !important;
+.primary-btn {
+    background: linear-gradient(135deg, #DC143C 0%, #C41E3A 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 10px 30px rgba(220, 20, 60, 0.4), 0 0 20px rgba(196, 30, 58, 0.25) !important;
+    border: 1px solid rgba(255, 200, 200, 0.3) !important;
 }
 
-/* Photo upload */
-.photo-upload {
-    border: 2px dashed var(--cream3) !important;
-    border-radius: 14px !important;
-    background: white !important;
-    overflow: hidden !important;
-    transition: border-color 0.2s !important;
-    min-width: 54px !important;
-    max-width: 54px !important;
-    height: 54px !important;
+.primary-btn:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 15px 40px rgba(220, 20, 60, 0.6), 0 0 30px rgba(196, 30, 58, 0.4) !important;
+    filter: brightness(1.1) !important;
 }
 
-.photo-upload:hover { border-color: var(--terracotta) !important; }
-
-/* ── RESPONSIVE ── */
-@media screen and (max-width: 1024px) {
-    .sidebar { width: 240px !important; min-width: 240px !important; }
-    .header-badges { display: none !important; }
-    .top-header { padding: 14px 20px !important; }
+.primary-btn:active {
+    transform: translateY(-1px) !important;
 }
 
-@media screen and (max-width: 768px) {
-    .main-layout { flex-direction: column !important; height: auto !important; }
-    .sidebar { width: 100% !important; min-width: 100% !important; height: auto !important; border-right: none !important; border-bottom: 3px solid var(--terracotta) !important; }
-    .chat-list { max-height: 160px !important; }
-    .main-content { height: 100vh !important; }
-    .top-header { padding: 12px 16px !important; gap: 10px !important; }
-    .main-title { font-size: 1.2rem !important; }
-    .input-section { padding: 12px 14px 16px !important; }
-    .send-btn button { padding: 12px 16px !important; font-size: 0.85rem !important; }
-    .examples-wrap { padding: 8px 14px !important; }
+.secondary-btn {
+    background: rgba(220, 20, 60, 0.15) !important;
+    color: #FFCCCC !important;
+    border: 1.5px solid rgba(220, 20, 60, 0.4) !important;
+    box-shadow: 0 4px 15px rgba(220, 20, 60, 0.15) !important;
 }
 
-@media screen and (max-width: 480px) {
-    .header-icon { width: 38px !important; height: 38px !important; font-size: 1.1rem !important; border-radius: 10px !important; }
-    .main-title { font-size: 1.05rem !important; }
-    .photo-upload { max-width: 46px !important; min-width: 46px !important; height: 46px !important; }
+.secondary-btn:hover {
+    background: rgba(220, 20, 60, 0.25) !important;
+    border-color: #FFE0E6 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(220, 20, 60, 0.3), 0 0 15px rgba(220, 20, 60, 0.2) !important;
+    color: #FFE0E6 !important;
+}
+
+textarea, input[type="text"] {
+    background: rgba(50, 10, 20, 0.7) !important;
+    border: 1.5px solid rgba(220, 20, 60, 0.3) !important;
+    color: #FFE0E6 !important;
+    border-radius: 12px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.95rem !important;
+    padding: 12px 16px !important;
+    transition: all 0.3s ease !important;
+}
+
+textarea::placeholder, input[type="text"]::placeholder {
+    color: rgba(220, 20, 60, 0.4) !important;
+}
+
+textarea:focus, input[type="text"]:focus {
+    border-color: #FFE0E6 !important;
+    background: rgba(50, 10, 20, 0.9) !important;
+    box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.15), inset 0 0 0 1px rgba(220, 20, 60, 0.3), 0 0 20px rgba(220, 20, 60, 0.2) !important;
+    outline: none !important;
+    color: #FFF0F5 !important;
+}
+
+.gradio-chatbot {
+    background: #E8F0F8 !important;
+    border: 1.5px solid rgba(220, 20, 60, 0.25) !important;
+    border-radius: 16px !important;
+    padding: 20px !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    box-shadow: inset 0 0 20px rgba(220, 20, 60, 0.08) !important;
+    min-height: 300px !important;
+}
+
+.gradio-chatbot::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.gradio-chatbot::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.gradio-chatbot::-webkit-scrollbar-thumb {
+    background: rgba(220, 20, 60, 0.3) !important;
+    border-radius: 4px !important;
+}
+
+.gradio-chatbot::-webkit-scrollbar-thumb:hover {
+    background: rgba(220, 20, 60, 0.5) !important;
+}
+
+.gradio-chatbot .message.user {
+    background: #B3D9F2 !important;
+    color: #1a1a1a !important;
+    border-radius: 16px 16px 4px 16px !important;
+    font-weight: 500 !important;
+    padding: 14px 18px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(179, 217, 242, 0.6) !important;
+    margin: 8px 0 !important;
+}
+
+.gradio-chatbot .message.bot {
+    background: #FFFFFF !important;
+    color: #1a1a1a !important;
+    border: 1.5px solid #D0D0D0 !important;
+    border-radius: 16px 16px 16px 4px !important;
+    padding: 14px 18px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    font-weight: 500 !important;
+    margin: 8px 0 !important;
+}
+
+.gradio-image {
+    border: 2px dashed rgba(220, 20, 60, 0.5) !important;
+    border-radius: 12px !important;
+    background: rgba(220, 20, 60, 0.1) !important;
+}
+
+.gradio-image:hover {
+    border-color: #FFE0E6 !important;
+    background: rgba(220, 20, 60, 0.2) !important;
+}
+
+.gradio-row {
+    gap: 10px !important;
+    margin: 0 !important;
+}
+
+.gradio-column {
+    gap: 10px !important;
+    margin: 0 !important;
+}
+
+@media (max-width: 1024px) {
+    .main-layout {
+        flex-direction: column !important;
+        padding: 12px !important;
+    }
+    
+    .sidebar-panel {
+        flex: 0 0 auto !important;
+        max-height: 150px !important;
+    }
+    
+    .content-panel {
+        flex: 1 !important;
+    }
 }
 """
 
-# ─────────────────────────────────────────
-# UI
-# ─────────────────────────────────────────
-with gr.Blocks(title="Saffron · Recipe Agent") as demo:
+with gr.Blocks(title="🍲 YummyBot") as demo:
+    active_chat_id = gr.State(None)
 
     with gr.Row(elem_classes="main-layout"):
 
-        # ── SIDEBAR ──
-        with gr.Column(elem_classes="sidebar", scale=0, min_width=280):
-            sidebar_html = gr.HTML(value=render_sidebar())
-            with gr.Row(elem_classes="new-chat-btn"):
-                new_chat_btn = gr.Button("＋  New Conversation")
-
-        # ── MAIN ──
-        with gr.Column(elem_classes="main-content", scale=1):
-
-            # Header
+        # ── Sidebar ──────────────────────────────
+        with gr.Column(elem_classes="sidebar-panel", scale=1):
             gr.HTML("""
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-            <div class="top-header">
-                <div class="header-icon">
-                    <i class="bi bi-fire"></i>
+                <div class="brand-container">
+                    <span class="brand-title">🍲 YummyBot</span>
+                    <span class="brand-subtitle">Gourmet Companion</span>
                 </div>
-                <div class="header-titles">
-                    <h1 class="main-title">Saffron <span>Recipe</span> Agent</h1>
-                    <p class="main-subtitle">Tunisian & international cuisine · Powered by AI</p>
-                </div>
-                <div class="header-badges">
-                    <span class="badge badge-warm"><i class="bi bi-stars"></i> 3 AI Tools</span>
-                    <span class="badge badge-sage"><i class="bi bi-journal-bookmark"></i> 522K+ Recipes</span>
-                    <span class="badge badge-terra"><i class="bi bi-geo-alt"></i> Tunisian Cuisine</span>
-                </div>
-            </div>
+                <div style="font-size:0.75rem;color:#FFCCCC;font-weight:700;letter-spacing:0.5px;">📜 RECENT CHATS</div>
             """)
 
-            # Chat
-            with gr.Column(elem_classes="chat-area"):
-                chatbot = gr.Chatbot(
-                    height=390,
-                    show_label=False,
-                    render_markdown=True,
-                    placeholder="""
-                    <div style='text-align:center;padding:60px 24px 40px;font-family:DM Sans,sans-serif;'>
-                        <div style='font-size:3rem;margin-bottom:16px;'>🫕</div>
-                        <p style='font-family:Playfair Display,serif;font-size:1.2rem;color:#3b2a1a;font-weight:700;margin-bottom:8px;'>
-                            What shall we cook today?
-                        </p>
-                        <p style='font-size:0.88rem;color:#9c7a5a;line-height:1.7;'>
-                            Ask me for any recipe — Tunisian, Mediterranean, or international.<br>
-                            Or upload a food photo and I'll tell you what it is!
-                        </p>
+            chat_selector = gr.Radio(
+                choices=get_chat_choices(),
+                label="",
+                interactive=True,
+                elem_classes="history-radio-list",
+            )
+
+            new_chat_btn = gr.Button(
+                "➕ New Conversation",
+                elem_classes="secondary-btn",
+                variant="secondary",
+            )
+
+            # ── Temperature control ───────────────
+            gr.HTML("""
+                <div style="margin-top:8px;padding-top:12px;border-top:1.5px solid rgba(220,20,60,0.2);">
+                    <div style="font-size:0.75rem;color:#FFCCCC;font-weight:700;letter-spacing:0.5px;margin-bottom:6px;">
+                        🌡️ CREATIVITY (TEMPERATURE)
                     </div>
-                    """
-                )
+                </div>
+            """)
+            temperature_slider = gr.Slider(
+                minimum=0.0,
+                maximum=1.5,
+                value=0.7,
+                step=0.05,
+                label="0 = precise  ·  1.5 = creative",
+                elem_classes="temp-slider",
+                interactive=True,
+            )
 
-            # Examples — pure HTML buttons that fill the textbox via JS
             gr.HTML("""
-            <div class="examples-wrap">
-                <button class="ex-pill" onclick="setPrompt('How do I make Shakshuka?')">🥘 Shakshuka</button>
-                <button class="ex-pill" onclick="setPrompt('Traditional Tunisian Couscous recipe')">🍲 Couscous</button>
-                <button class="ex-pill" onclick="setPrompt('What can I substitute for harissa?')">🫙 Harissa substitute</button>
-                <button class="ex-pill" onclick="setPrompt('Lemon chicken with olives recipe')">🍋 Lemon chicken</button>
-                <button class="ex-pill" onclick="setPrompt('Quick Tunisian salad recipe')">🥗 Tunisian salad</button>
-                <button class="ex-pill" onclick="setPrompt('How to make Brik à l\\'oeuf?')">🫔 Brik</button>
-            </div>
-            <script>
-            function setPrompt(text) {
-                const boxes = document.querySelectorAll('textarea');
-                for (const b of boxes) {
-                    if (b.placeholder && b.placeholder.includes('recipe')) {
-                        b.value = text;
-                        b.dispatchEvent(new Event('input', {bubbles: true}));
-                        b.focus();
-                        break;
-                    }
-                }
-            }
-            </script>
+                <div style="margin-top:auto;padding-top:12px;text-align:center;font-size:0.7rem;
+                            color:#FFB3B3;border-top:1.5px solid rgba(220,20,60,0.2);">
+                    🔥 Powered by Advanced AI
+                </div>
             """)
 
-            # Input Row
-            with gr.Row(elem_classes="input-section"):
-                msg = gr.Textbox(
-                    placeholder="Ask for a recipe, ingredient swap, or cooking tip...",
-                    show_label=False,
-                    lines=1,
-                    scale=5,
-                )
-                image_input = gr.Image(
-                    type="filepath",
-                    show_label=False,
-                    sources=["upload"],
-                    height=54,
-                    scale=0,
-                    min_width=54,
-                    elem_classes="photo-upload"
-                )
-                with gr.Column(scale=0, min_width=110, elem_classes="send-btn"):
-                    send_btn = gr.Button("Send  →")
-                with gr.Column(scale=0, min_width=120, elem_classes="identify-btn"):
-                    identify_btn = gr.Button("🔍 Identify")
+        # ── Main chat panel ───────────────────────
+        with gr.Column(elem_classes="content-panel", scale=3):
+            chatbot = gr.Chatbot(
+                label="",
+                show_label=False,
+                height=500,
+            )
 
-    # ── ACTIONS ──
-    send_btn.click(respond, [msg, chatbot], [msg, chatbot, sidebar_html])
-    msg.submit(respond, [msg, chatbot], [msg, chatbot, sidebar_html])
-    new_chat_btn.click(new_chat, outputs=[chatbot, sidebar_html])
-    identify_btn.click(handle_image, [image_input, chatbot], [chatbot, sidebar_html])
+            with gr.Row():
+                msg = gr.Textbox(
+                    placeholder="Ask for recipes, techniques, ingredients, or cooking tips...",
+                    scale=4,
+                    show_label=False,
+                    container=False,
+                    lines=1,
+                )
+                img_input = gr.Image(
+                    type="filepath",
+                    sources=["upload"],
+                    show_label=False,
+                    scale=1,
+                    container=False,
+                    height=50,
+                )
+
+            with gr.Row():
+                send = gr.Button("Send ✨", elem_classes="primary-btn", scale=2)
+
+    # ── Event wiring ──────────────────────────────
+    chat_selector.change(
+        load_selected_chat,
+        inputs=[chat_selector],
+        outputs=[chatbot, active_chat_id],
+    )
+
+    send.click(
+        respond,
+        inputs=[msg, chatbot, active_chat_id, temperature_slider],
+        outputs=[msg, chatbot, chat_selector, active_chat_id],
+    )
+
+    msg.submit(
+        respond,
+        inputs=[msg, chatbot, active_chat_id, temperature_slider],
+        outputs=[msg, chatbot, chat_selector, active_chat_id],
+    )
+
+    new_chat_btn.click(
+        new_chat,
+        outputs=[chatbot, chat_selector, active_chat_id],
+    )
+
+    img_input.change(
+        handle_image,
+        inputs=[img_input, chatbot, active_chat_id, temperature_slider],
+        outputs=[chatbot, chat_selector, active_chat_id],
+    )
 
 if __name__ == "__main__":
-    demo.launch(share=False, css=css)
+    demo.launch(css=css)

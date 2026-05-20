@@ -1,1 +1,1 @@
-from agent.agent import chat, chat_with_image, chat_history
+from .agent import chat, chat_with_image, chat_history
